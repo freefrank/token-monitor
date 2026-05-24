@@ -947,41 +947,32 @@ function renderBarsIcon(stats, height = 36, picker = pickWorstProvider) {
   const session = (provider.windows || []).find((w) => w.kind === 'session');
   const weekly = (provider.windows || []).find((w) => w.kind === 'weekly');
   const providerImage = trayProviderImages[provider.provider];
+  const { trayBarFillWidth, trayBarsLayout } = window.TokenMonitorTrayBars;
+  const layout = trayBarsLayout(height);
 
-  const width = Math.round(height * 2.06); // Resolves to ~37x18: full icon presence with compact bars.
   const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = layout.width;
+  canvas.height = layout.height;
   const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, width, height);
+  ctx.clearRect(0, 0, layout.width, layout.height);
 
-  const padX = 0;
-  const iconSize = Math.round(height * 1);
-  const iconY = Math.round((height - iconSize) / 2);
-  const innerGap = Math.round(height * 0.14);
-  const barsX = padX + iconSize + innerGap;
-  const barsWidth = width - barsX - padX;
-  const barHeight = Math.round(height * 0.24);
-  const barGap = Math.round(height * 0.13);
-  const totalBarsH = barHeight * 2 + barGap;
-  const barsStartY = Math.round((height - totalBarsH) / 2);
-  const radius = barHeight / 2;
-
-  if (providerImage) ctx.drawImage(providerImage, padX, iconY, iconSize, iconSize);
+  if (providerImage) {
+    ctx.drawImage(providerImage, layout.padX, layout.iconY, layout.iconSize, layout.iconSize);
+  }
 
   function drawBar(y, percent) {
-    roundedRectPath(ctx, barsX, y, barsWidth, barHeight, radius);
+    roundedRectPath(ctx, layout.barsX, y, layout.barsWidth, layout.barHeight, layout.radius);
     ctx.fillStyle = 'rgba(0, 0, 0, 0.32)';
     ctx.fill();
-    if (!Number.isFinite(percent)) return;
-    const fillW = Math.max(barHeight, Math.round(barsWidth * Math.max(0, Math.min(100, percent)) / 100));
-    roundedRectPath(ctx, barsX, y, fillW, barHeight, radius);
+    const fillW = trayBarFillWidth(percent, layout.barsWidth);
+    if (!fillW) return;
+    roundedRectPath(ctx, layout.barsX, y, fillW, layout.barHeight, layout.radius);
     ctx.fillStyle = 'rgba(0, 0, 0, 1)';
     ctx.fill();
   }
 
-  drawBar(barsStartY, Number(session?.remainingPercent));
-  drawBar(barsStartY + barHeight + barGap, Number(weekly?.remainingPercent));
+  drawBar(layout.barsStartY, Number(session?.remainingPercent));
+  drawBar(layout.barsStartY + layout.barHeight + layout.barGap, Number(weekly?.remainingPercent));
   return canvas.toDataURL('image/png');
 }
 
