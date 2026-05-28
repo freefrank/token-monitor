@@ -21,7 +21,7 @@
           </nav>
           <div class="actions-hotspot" title="Window controls"></div>
           <div class="window-actions">
-            <button id="pinButton" class="icon-button" title="Toggle always on top">⇧</button>
+            <button id="pinButton" class="icon-button" title="Cycle window behavior">⇧</button>
             <button id="settingsButton" class="icon-button" title="Settings">⚙</button>
             <button id="minButton" class="icon-button" title="Minimize">−</button>
             <button id="closeButton" class="icon-button" title="Close">×</button>
@@ -123,6 +123,14 @@
         </div>
         <div class="settings-group">
           <div class="settings-group-header"><span data-i18n="settings.display.title">Display Mode</span></div>
+          <label><span data-i18n="settings.display.windowBehavior">Window behavior</span>
+            <select id="windowBehaviorInput">
+              <option value="floating" data-i18n="settings.windowBehavior.floating">Floating above apps</option>
+              <option value="normal" data-i18n="settings.windowBehavior.normal">Normal window</option>
+              <option value="desktop" data-i18n="settings.windowBehavior.desktop">Desktop pinned</option>
+            </select>
+          </label>
+          <p class="settings-note" data-i18n="settings.display.windowBehaviorNote">Desktop pinned keeps the widget below other apps and locks drag/resize while staying clickable.</p>
           <label class="checkbox-label"><input id="trayModeInput" type="checkbox" /><span data-i18n="settings.display.trayMode">Tray Mode</span></label>
           <p class="settings-note" data-i18n="settings.display.trayNote">Hide the floating window; show a popover from the macOS menu bar or Windows system tray.</p>
           <label><span data-i18n="settings.display.trayText">Tray text</span>

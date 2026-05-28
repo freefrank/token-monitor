@@ -21,6 +21,7 @@ const semver = require('semver');
 const { aggregateDevices } = require('../shared/usage');
 const { startDiscordRpc, stopDiscordRpc, updateDiscordRpc } = require('./discordRpc');
 const { buildTrayIcon, createTray, formatTrayText, popoverBounds } = require('./tray');
+const { describeWindowBehavior, normalizeWindowBehaviorSettings } = require('./windowBehavior');
 
 if (!app.isPackaged) loadDotEnv();
 
@@ -59,6 +60,7 @@ if (!gotLock) app.exit(0);
 
 function defaultSettings() {
   const envHubUrl = process.env.TOKEN_MONITOR_HUB_URL || '';
+  const windowBehavior = process.env.TOKEN_MONITOR_ALWAYS_ON_TOP === '0' ? 'normal' : 'floating';
   return {
     hubMode: envHubUrl ? 'client' : 'local',
     hubUrl: envHubUrl,
@@ -69,7 +71,8 @@ function defaultSettings() {
     // to a random secret generated in startEmbeddedHub() if env is empty.
     hubHostSecret: process.env.TOKEN_MONITOR_SECRET || '',
     secret: process.env.TOKEN_MONITOR_SECRET || '',
-    alwaysOnTop: process.env.TOKEN_MONITOR_ALWAYS_ON_TOP !== '0',
+    windowBehavior,
+    alwaysOnTop: windowBehavior === 'floating',
     refreshMs: Number(process.env.TOKEN_MONITOR_WIDGET_REFRESH_MS || 15000),
     glassOpacity: 68,
     glassBlur: 32,
@@ -234,13 +237,16 @@ function readSettings() {
     if (saved.limitProviderOrder !== undefined) {
       merged.limitProviderOrder = migrateLimitProviderOrder(saved.limitProviderOrder);
     }
+    if (saved.windowBehavior === undefined && saved.alwaysOnTop !== undefined) {
+      merged.windowBehavior = saved.alwaysOnTop ? 'floating' : 'normal';
+    }
     merged.hubMode = normalizeHubMode(merged.hubMode);
     merged.language = normalizeLanguageSetting(merged.language);
     merged.hubHostPort = normalizeHubPort(merged.hubHostPort);
     merged.hubHostSecret = typeof merged.hubHostSecret === 'string' ? merged.hubHostSecret : '';
-    return merged;
+    return normalizeWindowBehaviorSettings(merged);
   }
-  catch (_error) { return defaultSettings(); }
+  catch (_error) { return normalizeWindowBehaviorSettings(defaultSettings()); }
 }
 
 function saveSettings() {
@@ -284,7 +290,16 @@ function applyMacActivationPolicy() {
 }
 
 function applyWindowSettings() {
-  if (mainWindow) mainWindow.setAlwaysOnTop(Boolean(settings.alwaysOnTop), 'floating');
+  if (!mainWindow) return;
+  const behavior = describeWindowBehavior(settings);
+  mainWindow.setAlwaysOnTop(behavior.alwaysOnTop, 'floating');
+  if (typeof mainWindow.setMovable === 'function') mainWindow.setMovable(behavior.draggable);
+  if (typeof mainWindow.setResizable === 'function') mainWindow.setResizable(behavior.resizable);
+  if (typeof mainWindow.setIgnoreMouseEvents === 'function') {
+    mainWindow.setIgnoreMouseEvents(behavior.mousePassthrough);
+  }
+  if (typeof mainWindow.setFocusable === 'function') mainWindow.setFocusable(behavior.focusable);
+  if (!behavior.focusable && typeof mainWindow.blur === 'function') mainWindow.blur();
 }
 
 function nativeBlurEnabled(source = settings) {
@@ -508,7 +523,7 @@ function updateTrayDisplay() {
   if (process.platform === 'darwin') tray.setTitle(text);
   // Tooltip always shows a useful summary, even in icon-only mode where setTitle is blank.
   const tip = formatTrayText(latestStats, 'both');
-  tray.setToolTip(`Token Monitor — ${tip}`);
+  tray.setToolTip(`Token Monitor - ${tip}`);
   // Icon: rendered bars image in bar modes, otherwise the app icon.
   let icon = null;
   if ((mode === 'bars' || mode === 'barsSession' || mode === 'barsWeekly' || mode === 'barsAllSessions') && providerTrayIcons[mode]) {
@@ -631,6 +646,7 @@ async function startStatsStream() {
 function showPopover() {
   if (!mainWindow || mainWindow.isDestroyed() || !tray) return;
   applyMacActivationPolicy();
+  applyWindowSettings();
   const current = mainWindow.getBounds();
   const target = popoverBounds(tray, current.width, current.height);
   mainWindow.setBounds(target);
@@ -664,9 +680,8 @@ function focusExistingWindow() {
   }
 }
 
-function enterTrayMode() {
+function ensureTray() {
   if (tray && !tray.isDestroyed()) return;
-  applyMacActivationPolicy();
   tray = createTray({
     onToggle: togglePopover,
     onQuit: requestAppQuit,
@@ -679,7 +694,13 @@ function enterTrayMode() {
       }
     }
   });
+}
+
+function enterTrayMode() {
+  applyMacActivationPolicy();
+  ensureTray();
   updateTrayDisplay();
+  applyWindowSettings();
   applyMacActivationPolicy();
   if (mainWindow && !mainWindow.isDestroyed()) {
     if (typeof mainWindow.setSkipTaskbar === 'function') mainWindow.setSkipTaskbar(true);
@@ -707,6 +728,7 @@ function exitTrayMode() {
       height: restore.height,
       ...(typeof restore.x === 'number' ? { x: restore.x, y: restore.y } : {})
     });
+    applyWindowSettings();
     mainWindow.show();
     mainWindow.focus();
   }
@@ -1091,7 +1113,7 @@ app.whenReady().then(() => {
     const previousTrayMode = settings.trayMode;
     const previousTrayContent = settings.trayContent;
     const previousStartAtLogin = settings.startAtLogin;
-    settings = {
+    settings = normalizeWindowBehaviorSettings({
       ...settings,
       ...patch,
       hubMode: patch.hubMode !== undefined ? normalizeHubMode(patch.hubMode, settings.hubMode) : settings.hubMode,
@@ -1115,7 +1137,7 @@ app.whenReady().then(() => {
       trayContent: normalizeTrayContent(patch.trayContent ?? settings.trayContent),
       language: patch.language !== undefined ? normalizeLanguageSetting(patch.language, settings.language) : normalizeLanguageSetting(settings.language),
       startAtLogin: loginItemEnabledHere() ? parseBoolean(patch.startAtLogin ?? settings.startAtLogin, false) : false
-    };
+    }, patch);
     saveSettings();
     if (settings.startAtLogin !== previousStartAtLogin) {
       settings.startAtLogin = applyLoginItem(settings.startAtLogin);

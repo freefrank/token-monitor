@@ -71,6 +71,8 @@ const DEFAULT_LIMIT_PROVIDER_ORDER = LIMIT_PROVIDERS.map((provider) => provider.
 const limitProviderOrderApi = window.TokenMonitorLimitProviderOrder;
 const i18n = window.TokenMonitorI18n;
 const LIMIT_REFRESH_OPTIONS = [60000, 120000, 300000, 900000, 1800000];
+const WINDOW_BEHAVIOR_VALUES = ['floating', 'normal', 'desktop'];
+const WINDOW_BEHAVIOR_ICONS = { floating: '⇧', normal: '○', desktop: '⇩' };
 const LIMIT_SOURCE_LABELS = { oauth: 'OAuth', cli: 'CLI', web: 'Web', rpc: 'CLI' };
 const deviceAccent = '#73bdf5';
 const deviceStaleColor = '#8c97a7';
@@ -79,7 +81,7 @@ const baseBreakdownOrder = ['tool', 'device', 'model'];
 const state = { period: 'today', appUpdate: null, breakdown: 'tool', settings: null, stats: null, refreshTimer: null, currentTotal: 0, rowSignature: '', streamConnected: false, mode: 'idle', appInfo: null, tokscaleStatus: null, tokscaleCheck: null, tokscaleBusy: false, hubInfo: null, cursorAccount: { status: null, error: '' } };
 const defaultAppearance = { glassOpacity: 68, glassBlur: 32, zoomFactor: 1, systemGlass: true, showLiveDot: true, showToolIcons: true };
 const els = {
-  shell: document.querySelector('.shell'), status: document.getElementById('status'), liveDot: document.getElementById('liveDot'), totalTokens: document.getElementById('totalTokens'), cost: document.getElementById('cost'), breakdown: document.getElementById('breakdown'), limitsPanel: document.getElementById('limitsPanel'), breakdownToggle: document.getElementById('breakdownToggle'), pinButton: document.getElementById('pinButton'), settingsButton: document.getElementById('settingsButton'), settingsPanel: document.getElementById('settingsPanel'), languageInput: document.getElementById('languageInput'), hubUrlInput: document.getElementById('hubUrlInput'), secretInput: document.getElementById('secretInput'), deviceIdInput: document.getElementById('deviceIdInput'), limitProviderCheckboxes: document.getElementById('limitProviderCheckboxes'), limitsRefreshInput: document.getElementById('limitsRefreshInput'), showLimitSourceInput: document.getElementById('showLimitSourceInput'), systemGlassInput: document.getElementById('systemGlassInput'), liveDotInput: document.getElementById('liveDotInput'), toolIconsInput: document.getElementById('toolIconsInput'), discordRpcInput: document.getElementById('discordRpcInput'), trayModeInput: document.getElementById('trayModeInput'), trayContentInput: document.getElementById('trayContentInput'), glassInput: document.getElementById('glassInput'), blurInput: document.getElementById('blurInput'), zoomInput: document.getElementById('zoomInput'), resetGlassButton: document.getElementById('resetGlassButton'), resetDepthButton: document.getElementById('resetDepthButton'), resetZoomButton: document.getElementById('resetZoomButton'), saveSettingsButton: document.getElementById('saveSettingsButton'), clientCheckboxes: document.getElementById('clientCheckboxes'), openConfigButton: document.getElementById('openConfigButton'), refreshButton: document.getElementById('refreshButton'), minButton: document.getElementById('minButton'), closeButton: document.getElementById('closeButton')
+  shell: document.querySelector('.shell'), status: document.getElementById('status'), liveDot: document.getElementById('liveDot'), totalTokens: document.getElementById('totalTokens'), cost: document.getElementById('cost'), breakdown: document.getElementById('breakdown'), limitsPanel: document.getElementById('limitsPanel'), breakdownToggle: document.getElementById('breakdownToggle'), pinButton: document.getElementById('pinButton'), settingsButton: document.getElementById('settingsButton'), settingsPanel: document.getElementById('settingsPanel'), languageInput: document.getElementById('languageInput'), hubUrlInput: document.getElementById('hubUrlInput'), secretInput: document.getElementById('secretInput'), deviceIdInput: document.getElementById('deviceIdInput'), limitProviderCheckboxes: document.getElementById('limitProviderCheckboxes'), limitsRefreshInput: document.getElementById('limitsRefreshInput'), showLimitSourceInput: document.getElementById('showLimitSourceInput'), systemGlassInput: document.getElementById('systemGlassInput'), liveDotInput: document.getElementById('liveDotInput'), toolIconsInput: document.getElementById('toolIconsInput'), discordRpcInput: document.getElementById('discordRpcInput'), windowBehaviorInput: document.getElementById('windowBehaviorInput'), trayModeInput: document.getElementById('trayModeInput'), trayContentInput: document.getElementById('trayContentInput'), glassInput: document.getElementById('glassInput'), blurInput: document.getElementById('blurInput'), zoomInput: document.getElementById('zoomInput'), resetGlassButton: document.getElementById('resetGlassButton'), resetDepthButton: document.getElementById('resetDepthButton'), resetZoomButton: document.getElementById('resetZoomButton'), saveSettingsButton: document.getElementById('saveSettingsButton'), clientCheckboxes: document.getElementById('clientCheckboxes'), openConfigButton: document.getElementById('openConfigButton'), refreshButton: document.getElementById('refreshButton'), minButton: document.getElementById('minButton'), closeButton: document.getElementById('closeButton')
 };
 Object.assign(els, {
   hubModeOptions: document.getElementById('hubModeOptions'),
@@ -806,6 +808,31 @@ function applyAppearanceSettings(settings) {
   document.documentElement.style.setProperty('--control-alpha', (0.03 + depth * 0.045).toFixed(3));
   document.documentElement.style.setProperty('--highlight-alpha', (0.045 + depth * 0.06).toFixed(3));
   els.liveDot.style.display = (settings?.showLiveDot !== false) ? '' : 'none';
+  els.shell.classList.toggle('desktop-mode', settings?.windowBehavior === 'desktop');
+}
+
+function currentWindowBehavior(source = state.settings) {
+  if (WINDOW_BEHAVIOR_VALUES.includes(source?.windowBehavior)) return source.windowBehavior;
+  return source?.alwaysOnTop ? 'floating' : 'normal';
+}
+
+function nextWindowBehavior(mode) {
+  const index = WINDOW_BEHAVIOR_VALUES.indexOf(mode);
+  return WINDOW_BEHAVIOR_VALUES[(index + 1) % WINDOW_BEHAVIOR_VALUES.length] || 'floating';
+}
+
+function syncWindowBehaviorControls() {
+  const mode = currentWindowBehavior();
+  const next = nextWindowBehavior(mode);
+  els.windowBehaviorInput.value = mode;
+  els.pinButton.textContent = WINDOW_BEHAVIOR_ICONS[mode] || WINDOW_BEHAVIOR_ICONS.normal;
+  els.pinButton.classList.toggle('active', mode !== 'normal');
+  const title = t('settings.windowBehavior.buttonTitle', {
+    current: t(`settings.windowBehavior.${mode}`),
+    next: t(`settings.windowBehavior.${next}`)
+  });
+  els.pinButton.title = title;
+  els.pinButton.setAttribute('aria-label', title);
 }
 
 function appearancePatchFromControls() {
@@ -936,6 +963,7 @@ function syncSettingsForm() {
   els.liveDotInput.checked = state.settings.showLiveDot !== false;
   els.toolIconsInput.checked = state.settings.showToolIcons !== false;
   els.discordRpcInput.checked = Boolean(state.settings.discordRpcEnabled);
+  syncWindowBehaviorControls();
   els.trayModeInput.checked = Boolean(state.settings.trayMode);
   els.trayContentInput.value = ['tokens', 'cost', 'both', 'tokensAll', 'costAll', 'bothAll', 'bars', 'barsSession', 'barsWeekly', 'barsAllSessions', 'icon'].includes(state.settings.trayContent) ? state.settings.trayContent : 'tokens';
   els.startupGroup?.classList.toggle('hidden', !state.appInfo?.loginItemSupported);
@@ -948,7 +976,6 @@ function syncSettingsForm() {
   els.glassInput.value = String(state.settings.glassOpacity ?? 68);
   els.blurInput.value = String(state.settings.glassBlur ?? 32);
   els.zoomInput.value = String(Math.round((Number(state.settings.zoomFactor) || 1) * 100));
-  els.pinButton.classList.toggle('active', Boolean(state.settings.alwaysOnTop));
   renderClientCheckboxes();
   renderLimitProviderCheckboxes();
   applyAppearanceSettings(state.settings);
@@ -1122,7 +1149,9 @@ for (const tab of document.querySelectorAll('.tab')) {
   });
 }
 
-els.pinButton.addEventListener('click', () => saveSettings({ alwaysOnTop: !state.settings.alwaysOnTop }));
+els.pinButton.addEventListener('click', () => {
+  saveSettings({ windowBehavior: nextWindowBehavior(currentWindowBehavior()) });
+});
 els.breakdownToggle.addEventListener('click', () => {
   state.breakdown = nextBreakdown(state.breakdown);
   state.rowSignature = '';
@@ -1196,6 +1225,7 @@ els.systemGlassInput.addEventListener('change', saveAppearanceFromControls);
 els.liveDotInput.addEventListener('change', saveAppearanceFromControls);
 els.toolIconsInput.addEventListener('change', saveAppearanceFromControls);
 els.discordRpcInput.addEventListener('change', saveAppearanceFromControls);
+els.windowBehaviorInput.addEventListener('change', () => saveSettings({ windowBehavior: els.windowBehaviorInput.value }));
 els.trayModeInput.addEventListener('change', () => saveSettings({ trayMode: els.trayModeInput.checked }));
 els.trayContentInput.addEventListener('change', () => saveSettings({ trayContent: els.trayContentInput.value }));
 els.startAtLoginInput?.addEventListener('change', () => saveSettings({ startAtLogin: els.startAtLoginInput.checked }));

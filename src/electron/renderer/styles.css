@@ -80,6 +80,7 @@ input, textarea, [contenteditable="true"] {
   gap: 12px;
   min-height: 30px;
 }
+.shell.desktop-mode .titlebar { -webkit-app-region: no-drag; }
 .titlebar > div:first-child { min-width: 0; flex: 1 1 auto; }
 .app-title {
   display: flex;
