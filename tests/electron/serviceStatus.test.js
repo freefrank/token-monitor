@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const test = require('node:test');
 
 const {
+  SERVICE_STATUS_PROVIDERS,
   createServiceStatusClient,
   summarizeStatuspageProvider
 } = require('../../src/electron/serviceStatus');
@@ -59,6 +60,76 @@ test('summarizeStatuspageProvider reports unknown when a provider fetch fails', 
   assert.equal(result.error, 'network down');
   assert.equal(result.incidentCount, 0);
   assert.equal(result.maintenanceCount, 0);
+});
+
+test('summarizeStatuspageProvider counts under_maintenance as maintenance, not degradation', () => {
+  const payload = {
+    status: { indicator: 'maintenance', description: 'Scheduled Maintenance' },
+    components: [
+      { name: 'API', status: 'under_maintenance' },
+      { name: 'Dashboard', status: 'operational' },
+      { name: 'Search', status: 'degraded_performance' }
+    ],
+    scheduled_maintenances: [{ name: 'DB upgrade', status: 'in_progress' }]
+  };
+
+  const result = summarizeStatuspageProvider(provider, payload, { checkedAt: '2026-06-06T02:31:00Z' });
+
+  // The degraded-component count must reflect real problems only — the
+  // component under planned maintenance belongs to maintenanceCount instead.
+  assert.deepEqual(result.componentIssues, [{ name: 'Search', status: 'degraded_performance' }]);
+  assert.equal(result.maintenanceCount, 1);
+});
+
+test('default providers cover openai, claude, cursor, and deepseek with summary endpoints', () => {
+  const ids = SERVICE_STATUS_PROVIDERS.map((entry) => entry.id);
+  assert.deepEqual(ids, ['openai', 'claude', 'cursor', 'deepseek']);
+  for (const entry of SERVICE_STATUS_PROVIDERS) {
+    assert.match(entry.summaryUrl, /\/api\/v2\/summary\.json$/);
+    assert.ok(entry.pageUrl.startsWith('https://'), `${entry.id} pageUrl should be https`);
+  }
+});
+
+test('service status client sends an identifying User-Agent header', async () => {
+  let seenInit = null;
+  const client = createServiceStatusClient({
+    providers: [provider],
+    now: () => 0,
+    fetchImpl: async (_url, init) => {
+      seenInit = init;
+      return { ok: true, json: async () => summary };
+    }
+  });
+
+  await client.getServiceStatus();
+
+  assert.match(String(seenInit?.headers?.['User-Agent'] || ''), /TokenMonitor\//);
+});
+
+test('service status client retries soon after a failed check instead of caching the failure', async () => {
+  let attempt = 0;
+  let clock = 0;
+  const client = createServiceStatusClient({
+    providers: [provider],
+    cacheMs: 60_000,
+    errorCacheMs: 10_000,
+    now: () => clock,
+    fetchImpl: async () => {
+      attempt += 1;
+      if (attempt === 1) throw new Error('network down');
+      return { ok: true, json: async () => summary };
+    }
+  });
+
+  const first = await client.getServiceStatus();
+  assert.equal(first.providers[0].status, 'unknown');
+
+  // Still inside the success-cache window but past the short failure window.
+  clock = 11_000;
+  const second = await client.getServiceStatus();
+
+  assert.equal(attempt, 2);
+  assert.equal(second.providers[0].status, 'degraded');
 });
 
 test('service status client caches results until forced', async () => {

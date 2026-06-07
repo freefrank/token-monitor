@@ -76,6 +76,7 @@ const LIMIT_PROVIDERS = [
 const DEFAULT_LIMIT_PROVIDER_ORDER = LIMIT_PROVIDERS.map((provider) => provider.id).join(',');
 const limitProviderOrderApi = window.TokenMonitorLimitProviderOrder;
 const limitProviderPresentationApi = window.TokenMonitorLimitProviderPresentation;
+const serviceStatusPresentationApi = window.TokenMonitorServiceStatusPresentation;
 const clientDisplayPreferencesApi = window.TokenMonitorClientDisplayPreferences;
 const viewDisplayPreferencesApi = window.TokenMonitorViewDisplayPreferences;
 const preferenceDragSortApi = window.TokenMonitorPreferenceDragSort;
@@ -128,8 +129,13 @@ const viewPeriodValues = new Set(['today', 'month', 'allTime']);
 const viewBreakdownValues = new Set([...baseBreakdownOrder, 'status', 'limits']);
 const SERVICE_STATUS_PLACEHOLDERS = [
   { id: 'openai', label: 'OpenAI', pageUrl: 'https://status.openai.com' },
-  { id: 'claude', label: 'Claude', pageUrl: 'https://status.claude.com' }
+  { id: 'claude', label: 'Claude', pageUrl: 'https://status.claude.com' },
+  { id: 'cursor', label: 'Cursor', pageUrl: 'https://status.cursor.com' },
+  { id: 'deepseek', label: 'DeepSeek', pageUrl: 'https://status.deepseek.com' }
 ];
+// Mirrors DEFAULT_CACHE_MS in serviceStatus.js — the renderer skips re-asking
+// the main process while its cache is still warm.
+const SERVICE_STATUS_MIN_REFRESH_MS = 60_000;
 const SETTINGS_SECTION_IDS = ['general', 'main', 'window', 'tools', 'limits', 'accounts', 'sync'];
 const initialFloatingBubble = window.__TOKEN_MONITOR_INITIAL_FLOATING_BUBBLE__ || { collapsed: false, side: null };
 const initialViewState = window.__TOKEN_MONITOR_INITIAL_VIEW_STATE__ || {};
@@ -1013,9 +1019,17 @@ function serviceStatusLabel(status) {
   return t('serviceStatus.unknown');
 }
 
+function serviceStatusComponentText(provider) {
+  const { visible, overflow } = serviceStatusPresentationApi.affectedComponentNames(provider.componentIssues, 2);
+  if (!visible.length) return '';
+  const names = visible.join(t('serviceStatus.listSeparator'));
+  return overflow > 0 ? `${names} ${t('serviceStatus.componentsMore', { count: overflow })}` : names;
+}
+
 function serviceStatusMeta(provider) {
   const parts = [];
-  if (Number(provider.componentIssues?.length || 0) > 0) parts.push(t('serviceStatus.components', { count: provider.componentIssues.length }));
+  const components = serviceStatusComponentText(provider);
+  if (components) parts.push(components);
   if (Number(provider.incidentCount || 0) > 0) parts.push(t('serviceStatus.incidents', { count: provider.incidentCount }));
   if (Number(provider.maintenanceCount || 0) > 0) parts.push(t('serviceStatus.maintenance', { count: provider.maintenanceCount }));
   return parts.join(' · ') || t('serviceStatus.noIssues');
@@ -1059,6 +1073,8 @@ function renderServiceStatus() {
     meta.className = 'service-status-meta';
     const checked = provider.checkedAt ? t('serviceStatus.checkedAt', { time: formatTime(provider.checkedAt) }) : '';
     meta.textContent = [serviceStatusMeta(provider), checked].filter(Boolean).join(' · ');
+    const affected = serviceStatusPresentationApi.affectedComponentNames(provider.componentIssues).all;
+    if (affected.length) meta.title = affected.join(t('serviceStatus.listSeparator'));
     row.append(head, description, meta);
     return row;
   });
@@ -1097,7 +1113,7 @@ async function refreshServiceStatus(options = {}) {
 function maybeRefreshServiceStatus() {
   if (state.breakdown !== 'status' || state.serviceStatusBusy) return;
   const checkedAt = Date.parse(state.serviceStatus?.checkedAt || '');
-  if (Number.isFinite(checkedAt) && Date.now() - checkedAt < 60_000) return;
+  if (Number.isFinite(checkedAt) && Date.now() - checkedAt < SERVICE_STATUS_MIN_REFRESH_MS) return;
   refreshServiceStatus().catch(() => {});
 }
 

@@ -29,8 +29,17 @@ test('renderer includes a dedicated service status panel and Status view option'
   const app = readRendererFile('app.js');
 
   assert.match(html, /<section id="serviceStatusPanel" class="service-status-panel hidden"><\/section>/);
+  assert.match(html, /<script src="serviceStatusPresentation\.js"><\/script>/);
   assert.match(app, /\{ id: 'status', labelKey: 'views\.status' \}/);
   assert.match(app, /viewBreakdownValues = new Set\(\[\.\.\.baseBreakdownOrder, 'status', 'limits'\]\)/);
+  // Placeholders cover every provider so the rows render before the first fetch.
+  assert.match(app, /label: 'Cursor'/);
+  assert.match(app, /label: 'DeepSeek'/);
+});
+
+test('renderer surfaces affected component names through the presentation helper', () => {
+  const app = readRendererFile('app.js');
+  assert.match(app, /serviceStatusPresentationApi\.affectedComponentNames/);
 });
 
 test('renderer fetches service status only through preload IPC', () => {
@@ -49,6 +58,8 @@ test('preload and main expose service status IPC with status page allowlist', ()
 
   assert.match(preload, /getServiceStatus: \(options\) => ipcRenderer\.invoke\('serviceStatus:get', options\)/);
   assert.match(main, /ipcMain\.handle\('serviceStatus:get'/);
-  assert.match(main, /status\.openai\.com/);
-  assert.match(main, /status\.claude\.com/);
+  // The open-external allowlist is derived from the provider list rather than
+  // duplicating each status hostname, so new providers stay openable for free.
+  assert.match(main, /SERVICE_STATUS_PROVIDERS/);
+  assert.match(main, /STATUS_PAGE_HOSTS/);
 });

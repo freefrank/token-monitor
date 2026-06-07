@@ -1,7 +1,13 @@
 'use strict';
 
+const { appVersion } = require('../shared/appVersion');
+
 const DEFAULT_CACHE_MS = 60_000;
+// A failed check is only cached briefly so a transient network blip recovers on
+// the next visit instead of being pinned to "unknown" for the full cache window.
+const DEFAULT_ERROR_CACHE_MS = 10_000;
 const DEFAULT_TIMEOUT_MS = 5_000;
+const USER_AGENT = `TokenMonitor/${appVersion()} (+https://github.com/Javis603/token-monitor)`;
 
 const SERVICE_STATUS_PROVIDERS = [
   {
@@ -15,10 +21,29 @@ const SERVICE_STATUS_PROVIDERS = [
     label: 'Claude',
     pageUrl: 'https://status.claude.com',
     summaryUrl: 'https://status.claude.com/api/v2/summary.json'
+  },
+  {
+    id: 'cursor',
+    label: 'Cursor',
+    pageUrl: 'https://status.cursor.com',
+    summaryUrl: 'https://status.cursor.com/api/v2/summary.json'
+  },
+  {
+    id: 'deepseek',
+    label: 'DeepSeek',
+    // The official status.deepseek.com page only serves HTML to browsers — its
+    // /api/v2 endpoint returns nothing to programmatic clients — so we fetch the
+    // JSON from the Atlassian-hosted mirror while still linking users to the
+    // official page.
+    pageUrl: 'https://status.deepseek.com',
+    summaryUrl: 'https://deepseek.statuspage.io/api/v2/summary.json'
   }
 ];
 
-const COMPONENT_OK = new Set(['operational']);
+// Components in planned maintenance are intentionally not degradations — they
+// are surfaced through maintenanceCount instead, matching how Atlassian and
+// incident.io separate maintenance from incidents.
+const COMPONENT_NON_ISSUE = new Set(['operational', 'under_maintenance']);
 const INACTIVE_INCIDENT = new Set(['resolved', 'completed', 'postmortem']);
 const INACTIVE_MAINTENANCE = new Set(['completed', 'canceled']);
 
@@ -43,7 +68,7 @@ function activeItems(items, inactiveStatuses) {
 
 function componentIssues(components) {
   return (Array.isArray(components) ? components : [])
-    .filter((component) => !COMPONENT_OK.has(normalizeStatus(component?.status)))
+    .filter((component) => !COMPONENT_NON_ISSUE.has(normalizeStatus(component?.status)))
     .map((component) => ({
       name: String(component?.name || 'Unknown').trim() || 'Unknown',
       status: normalizeStatus(component?.status) || 'unknown'
@@ -91,8 +116,10 @@ function summarizeStatuspageProvider(provider, payload, options = {}) {
 async function fetchJsonWithTimeout(fetchImpl, url, timeoutMs) {
   const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const timer = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
+  const init = { headers: { 'User-Agent': USER_AGENT } };
+  if (controller) init.signal = controller.signal;
   try {
-    const response = await fetchImpl(url, controller ? { signal: controller.signal } : undefined);
+    const response = await fetchImpl(url, init);
     if (!response?.ok) throw new Error(`HTTP ${response?.status || 'error'}`);
     return await response.json();
   } finally {
@@ -104,6 +131,7 @@ function createServiceStatusClient(options = {}) {
   const providers = options.providers || SERVICE_STATUS_PROVIDERS;
   const fetchImpl = options.fetchImpl || globalThis.fetch;
   const cacheMs = Number(options.cacheMs || DEFAULT_CACHE_MS);
+  const errorCacheMs = Number(options.errorCacheMs || DEFAULT_ERROR_CACHE_MS);
   const timeoutMs = Number(options.timeoutMs || DEFAULT_TIMEOUT_MS);
   const now = options.now || Date.now;
   let cache = null;
@@ -121,8 +149,9 @@ function createServiceStatusClient(options = {}) {
         return summarizeStatuspageProvider(provider, null, { checkedAt, error });
       }
     }));
+    const anyError = results.some((entry) => entry.error);
     cache = { checkedAt, providers: results };
-    cacheUntil = currentTime + cacheMs;
+    cacheUntil = currentTime + (anyError ? errorCacheMs : cacheMs);
     return cache;
   }
 
