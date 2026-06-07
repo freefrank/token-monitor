@@ -2238,10 +2238,13 @@ function renderViewPreferences() {
       const toggle = document.createElement('button');
       toggle.type = 'button';
       toggle.className = `view-subgroup-toggle${state.serviceProvidersExpanded ? ' is-expanded' : ''}`;
-      toggle.title = t('serviceStatus.expandProviders', { name: label });
+      toggle.title = t('serviceStatus.configureProviders', { name: label });
       toggle.setAttribute('aria-label', toggle.title);
       toggle.setAttribute('aria-expanded', String(Boolean(state.serviceProvidersExpanded)));
-      toggle.textContent = state.serviceProvidersExpanded ? '▾' : '▸';
+      const toggleIcon = document.createElement('span');
+      toggleIcon.className = 'view-subgroup-icon';
+      toggleIcon.setAttribute('aria-hidden', 'true');
+      toggle.append(toggleIcon);
       toggle.addEventListener('click', () => {
         state.serviceProvidersExpanded = !state.serviceProvidersExpanded;
         renderViewPreferences();
