@@ -3,9 +3,11 @@ data/
 build/
 dist/
 _site/
+.agents/
 .claude/
 CLAUDE.md
 AGENTS.md
+skills-lock.json
 docs/superpowers/
 .superpowers/
 .codegraph/

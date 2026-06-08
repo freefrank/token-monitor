@@ -69,6 +69,14 @@ html.is-windows .shell {
   border-radius: 8px;
   clip-path: inset(0 round 8px);
 }
+
+html.is-mac-legacy, html.is-mac-legacy body {
+  border-radius: 10px;
+}
+html.is-mac-legacy .shell {
+  border-radius: 10px;
+  clip-path: inset(0 round 10px);
+}
 .shell::after {
   content: "";
   position: absolute;

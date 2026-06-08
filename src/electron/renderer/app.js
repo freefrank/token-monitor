@@ -1540,10 +1540,22 @@ function applyAppearanceSettings(settings) {
   els.shell.classList.toggle('desktop-mode', settings?.windowBehavior === 'desktop');
   els.shell.classList.toggle('title-icon-only', settings?.titleIconOnly === true);
   const isWindows = navigator.userAgent.toLowerCase().includes('windows');
+  
+  let isMacLegacyRadius = false;
+  if (!isWindows && state.appInfo?.platform === 'darwin' && state.appInfo?.osRelease) {
+    // macOS Tahoe (macOS 26) is Darwin 25. Older macOS versions (like 14, 15) use a ~12px native vibrancy radius.
+    const major = parseInt(state.appInfo.osRelease.split('.')[0], 10);
+    if (major < 25) isMacLegacyRadius = true;
+  }
+
   document.documentElement.classList.remove('is-windows-glass'); // cleanup old class
   document.body.classList.remove('is-windows-glass');
+  
   document.documentElement.classList.toggle('is-windows', isWindows);
   document.body.classList.toggle('is-windows', isWindows);
+  
+  document.documentElement.classList.toggle('is-mac-legacy', isMacLegacyRadius);
+  document.body.classList.toggle('is-mac-legacy', isMacLegacyRadius);
   updateTitleFit();
 }
 

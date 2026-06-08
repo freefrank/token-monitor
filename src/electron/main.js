@@ -1979,6 +1979,7 @@ app.whenReady().then(() => {
     version: app.getVersion(),
     platform: process.platform,
     arch: process.arch,
+    osRelease: require('os').release(),
     isPackaged: app.isPackaged,
     userData: app.getPath('userData'),
     sharedDataDir: sharedDataDir(),
