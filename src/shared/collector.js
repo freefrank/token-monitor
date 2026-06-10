@@ -334,9 +334,13 @@ async function collectUsageOnce(options) {
   if (normalizedClients) {
     await maybeSyncCursor(normalizedClients, options.logger);
     await maybeSyncAntigravity(normalizedClients, options.logger);
-    const todayJson = await runTokscale({ clients: normalizedClients, flags: ['--today'], commandTimeoutMs });
-    const monthJson = await runTokscale({ clients: normalizedClients, flags: ['--month'], commandTimeoutMs });
-    const allTimeJson = await runTokscale({ clients: normalizedClients, flags: ['--since', allTimeSince], commandTimeoutMs });
+    // The three windows are independent read-only scans of the same data dirs,
+    // so run them concurrently — wall-clock drops from sum() to max() of the three.
+    const [todayJson, monthJson, allTimeJson] = await Promise.all([
+      runTokscale({ clients: normalizedClients, flags: ['--today'], commandTimeoutMs }),
+      runTokscale({ clients: normalizedClients, flags: ['--month'], commandTimeoutMs }),
+      runTokscale({ clients: normalizedClients, flags: ['--since', allTimeSince], commandTimeoutMs })
+    ]);
     today = extractUsageFromTokscale(todayJson);
     month = extractUsageFromTokscale(monthJson);
     allTime = extractUsageFromTokscale(allTimeJson);
