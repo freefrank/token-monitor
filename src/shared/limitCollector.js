@@ -352,6 +352,7 @@ function runProcessText(command, args = [], options = {}) {
     const child = spawnFn(command, args, {
       cwd: options.cwd,
       env: options.env,
+      shell: Boolean(options.shell),
       windowsHide: true
     });
     let stdout = '';
@@ -836,7 +837,18 @@ async function runClaudePtyProbe(slashCommand, exitMarkerRegex, deps = {}) {
 
 async function runClaudeUsageCli(deps = {}) {
   if (deps.runClaudeUsageCli) return deps.runClaudeUsageCli();
+  if ((deps.platform || process.platform) === 'win32') return runClaudeDirectUsageCli(deps);
   return runClaudePtyProbe('/usage', 'currentsession.*?[0-9]{1,3}(?:\\.[0-9]+)?%', deps);
+}
+
+function runClaudeDirectUsageCli(deps = {}) {
+  const platform = deps.platform || process.platform;
+  const command = claudeCommandCandidates(deps.env || process.env)[0];
+  return runProcessText(command, ['/usage'], {
+    ...deps,
+    shell: platform === 'win32',
+    timeoutMs: Number(deps.claudeDirectCliTimeoutMs || 12000)
+  });
 }
 
 async function touchClaudeAuthPath(deps = {}) {
