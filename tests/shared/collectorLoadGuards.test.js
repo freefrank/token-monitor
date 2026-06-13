@@ -111,6 +111,22 @@ test('watchPathsForClients includes Kimi, Qwen, and Grok Build local roots', () 
   }
 });
 
+test('watchPathsForClients includes the GitHub Copilot CLI otel root', () => {
+  const tmp = withTmpHome([path.join('.copilot', 'otel')]);
+  const originalHomedir = os.homedir;
+  os.homedir = () => tmp;
+  try {
+    const { clientDataDirPresence, watchPathsForClients } = freshCollector();
+    const dirs = watchPathsForClients('copilot');
+    assert.ok(dirs.includes(path.join(tmp, '.copilot', 'otel')));
+    assert.deepEqual(clientDataDirPresence('copilot'), { copilot: true });
+  } finally {
+    os.homedir = originalHomedir;
+    delete require.cache[collectorPath];
+    fs.rmSync(tmp, { recursive: true, force: true });
+  }
+});
+
 test('collectUsageOnce skips antigravity sync when no antigravity data root exists', async () => {
   const tmp = withTmpHome([]);
   const childProcess = require('node:child_process');

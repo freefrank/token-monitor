@@ -260,6 +260,15 @@ test('extractUsageFromTokscale normalizes Kimi, Qwen, and Grok Build client name
   assert.equal(period.clients.grok, 19);
 });
 
+test('extractUsageFromTokscale normalizes GitHub Copilot client names', () => {
+  const period = extractUsageFromTokscale([
+    { client: 'GitHub Copilot', model: 'gpt-4.1', totalTokens: 21 },
+    { client: 'Copilot CLI', model: 'gpt-4.1', totalTokens: 9 }
+  ]);
+
+  assert.equal(period.clients.copilot, 30);
+});
+
 test('extractUsageFromTokscale keeps model usage grouped by client', () => {
   const period = extractUsageFromTokscale([
     { client: 'Hermes', model: 'claude-3-5-sonnet', totalTokens: 100, costUsd: 1.25 },
