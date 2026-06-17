@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     tags: ['v*']
+    branches: ['feat/signpath-windows-signing']  # TEMP: validate signing on this branch; remove before merge
   workflow_dispatch: {}  # manual runs build+sign only (no GitHub release) — use to validate signing
 
 jobs:
