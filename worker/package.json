@@ -11,6 +11,14 @@
     "secret:put": "wrangler secret put TOKEN_MONITOR_SECRET"
   },
   "cloudflare": {
+    "label": "Token Monitor Hub",
+    "products": [
+      "Workers",
+      "Durable Objects"
+    ],
+    "categories": [
+      "storage"
+    ],
     "bindings": {
       "TOKEN_MONITOR_SECRET": {
         "description": "Required. Shared secret every agent and widget must present. Generate a long random string, e.g. `openssl rand -hex 32`."
