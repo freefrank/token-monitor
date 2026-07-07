@@ -1,24 +1,28 @@
 # English
 
-**Open-source build, not paid-signed.** macOS and Windows will ask you to confirm on first launch — instructions below.
+**Open-source build, not paid-signed.** macOS and Windows may ask you to confirm on first launch. Linux AppImage downloads may need executable permission — instructions below.
 
 ## What's changed
 
 ### Added
-- **Data export:** Settings -> Collection -> Data export can now write CSV / JSON files once or auto-export them to a folder for Excel, Obsidian, scripts, and dashboards. (#61)
-- **CodeBuddy and WorkBuddy tracking:** Token Monitor now collects and displays usage from CodeBuddy and WorkBuddy alongside the existing tools.
-- **Trends active time:** Trends and history summaries now include Active time when tokscale provides session timing data.
+- **Japanese and Korean interface languages:** Settings -> General -> Interface language now includes 日本語 and 한국어, and Auto (system) recognizes Japanese and Korean system locales. (#57, #58)
+- **Linux AppImage downloads:** Linux x64 AppImage is now available alongside macOS and Windows builds. (#65)
 
 ### Improved
-- **AI Tool Limits bars:** Settings -> AI Tool Limits now lets quota bars show either Remaining or Used, and the Limits and Home surfaces use the same display mode.
+- **Dashboard stat cards:** Activity summary cards now balance their widths so longer localized labels and values fit more evenly.
+- **Bundled tokscale 4.0.11:** Includes Oh My Pi (OMP) usage tracking and ZCode parsing fixes. (#77)
+
+### Fixed
+- **App update prompts:** Dismissing one release no longer hides later releases for a full day; cached newer versions are refreshed more quickly.
 
 ## Which file should I download?
 
 - **macOS (Apple Silicon, M1 and later)** — the `.dmg` file
 - **Windows 10/11** — `Token Monitor Setup ….exe` (installer, recommended)
 - **Windows portable** — `Token Monitor ….exe` (runs without installing)
+- **Linux x64** — the `.AppImage` file
 
-Intel Macs and Linux are not pre-built — run from source per the [README](https://github.com/Javis603/token-monitor#readme). The macOS `.zip` is the same app repackaged; ignore it unless you specifically need it.
+Other platforms are not pre-built — run from source per the [README](https://github.com/Javis603/token-monitor#readme). The macOS `.zip` is the same app repackaged; ignore it unless you specifically need it.
 
 ## First-launch unlock
 
@@ -30,6 +34,13 @@ xattr -dr com.apple.quarantine "/Applications/Token Monitor.app"
 
 **Windows:** SmartScreen → More info → Run anyway.
 
+**Linux:** mark the AppImage executable, then run it:
+
+```bash
+chmod +x "Token Monitor"*.AppImage
+./"Token Monitor"*.AppImage
+```
+
 ## tokscale dependency
 
 Tokscale is bundled with this app. See **Settings → Tokscale** for the exact version
@@ -40,25 +51,29 @@ open-source: https://github.com/junhoyeo/tokscale
 
 # 中文
 
-**这是开源构建，不是付费签名版本。** macOS 和 Windows 首次启动时会要求你手动确认，操作说明见下方。
+**这是开源构建，不是付费签名版本。** macOS 和 Windows 首次启动时可能会要求你手动确认；Linux AppImage 下载后可能需要先赋予执行权限，操作说明见下方。
 
 ## 更新内容
 
 ### 新增
-- **数据导出：** 设置 -> 采集 -> 数据导出 现在可以一次性写出 CSV / JSON，也可以自动导出到文件夹，方便接入 Excel、Obsidian、自写脚本和仪表盘。（#61）
-- **CodeBuddy 和 WorkBuddy 追踪：** Token Monitor 现在会采集并显示 CodeBuddy 与 WorkBuddy 的用量，和现有工具一起统计。
-- **趋势活跃时间：** 当 tokscale 提供 session 时间数据时，趋势与历史摘要现在会显示活跃时间。
+- **日文和韩文界面：** 设置 -> 常规 -> 界面语言 现在包含 日本語 和 한국어，自动（跟随系统）也会识别日文、韩文系统语言。（#57、#58）
+- **Linux AppImage 下载：** 现在会和 macOS、Windows 一起提供 Linux x64 AppImage。（#65）
 
 ### 改进
-- **AI 工具额度条：** 设置 -> AI 工具额度 现在可以选择额度条显示“剩余”或“已用”，额度页和主页会使用同一显示方式。
+- **仪表盘统计卡片：** 活动摘要卡片现在会平衡宽度，较长的本地化标签和值也更容易排布整齐。
+- **内置 tokscale 4.0.11：** 包含 Oh My Pi (OMP) 用量追踪和 ZCode 解析修复。（#77）
+
+### 修复
+- **应用更新提示：** 忽略某个版本后，后续新版本不会再被整天隐藏；已缓存的新版本会更快刷新。
 
 ## 应该下载哪个文件？
 
 - **macOS（苹果芯片，M1 及之后机型）** — 下载 `.dmg` 安装包
 - **Windows 10/11** — 下载 `Token Monitor Setup ….exe`（安装版，推荐）
 - **Windows 便携版** — 下载 `Token Monitor ….exe`（无需安装，直接运行）
+- **Linux x64** — 下载 `.AppImage` 文件
 
-Intel Mac 和 Linux 暂不提供预构建版本，请参考 [README](https://github.com/Javis603/token-monitor#readme) 从源码运行。macOS 的 `.zip` 只是同一个 app 的重新打包版本，除非你明确需要，否则可以忽略。
+其他平台暂不提供预构建版本，请参考 [README](https://github.com/Javis603/token-monitor#readme) 从源码运行。macOS 的 `.zip` 只是同一个 app 的重新打包版本，除非你明确需要，否则可以忽略。
 
 ## 首次启动放行
 
@@ -69,6 +84,13 @@ xattr -dr com.apple.quarantine "/Applications/Token Monitor.app"
 ```
 
 **Windows：** SmartScreen → 更多信息 → 仍要运行。
+
+**Linux：** 先给 AppImage 执行权限，然后运行：
+
+```bash
+chmod +x "Token Monitor"*.AppImage
+./"Token Monitor"*.AppImage
+```
 
 ## tokscale 依赖
 

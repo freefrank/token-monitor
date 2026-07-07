@@ -474,12 +474,12 @@ function extractUsageFromTokscale(json) {
   }
   const period = emptyPeriod();
   for (const row of rows) {
+    const client = detectClient(row);
     const tokens = tokenValue(row);
     const cost = costValue(row);
     const cacheRead = Math.max(0, Math.round(firstNumber(row, CACHE_READ_TOKEN_KEYS)));
     const cacheWrite = Math.max(0, Math.round(firstNumber(row, CACHE_WRITE_TOKEN_KEYS)));
     const output = Math.max(0, Math.round(firstNumber(row, OUTPUT_TOKEN_KEYS)));
-    const client = detectClient(row);
     let model = detectModel(row);
     if (client === 'cursor' && model === 'auto') model = 'cursor-auto';
     period.totalTokens += Math.max(0, Math.round(tokens));
